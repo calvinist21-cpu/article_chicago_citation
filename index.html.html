@@ -1,0 +1,2613 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Chicago 출처 생성기 · Chicago Citation Generator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,600&family=JetBrains+Mono:wght@400;500&family=Noto+Serif+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #f4eee1;
+    --paper-2: #ece4d1;
+    --ink: #1a1613;
+    --ink-soft: #3a322b;
+    --rule: #8a7c66;
+    --accent: #b8892b;
+    --accent-deep: #8a6418;
+    --red: #a23e2b;
+    --shadow: rgba(26, 22, 19, 0.08);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Crimson Pro', 'Noto Serif KR', Georgia, serif;
+    font-size: 17px;
+    line-height: 1.6;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    background-image:
+      radial-gradient(circle at 20% 10%, rgba(184, 137, 43, 0.06), transparent 40%),
+      radial-gradient(circle at 85% 85%, rgba(162, 62, 43, 0.04), transparent 45%);
+    background-attachment: fixed;
+  }
+
+  /* grain overlay */
+  body::before {
+    content: "";
+    position: fixed; inset: 0;
+    pointer-events: none;
+    opacity: 0.35;
+    mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.1 0 0 0 0 0.09 0 0 0 0 0.07 0 0 0 0.08 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+    z-index: 1;
+  }
+
+  .wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 56px 32px 120px;
+    position: relative;
+    z-index: 2;
+  }
+
+  /* ========== MASTHEAD ========== */
+  .masthead {
+    border-top: 3px double var(--ink);
+    border-bottom: 3px double var(--ink);
+    padding: 18px 0;
+    margin-bottom: 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+
+  .masthead .left {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  .masthead .right {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    color: var(--ink-soft);
+  }
+  .masthead .right .dot { color: var(--accent); }
+
+  /* ========== BRAND LOGO ========== */
+  .brand {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    margin: 36px 0 40px;
+    position: relative;
+  }
+  .brand::before,
+  .brand::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    width: 80px;
+    height: 1px;
+    background: var(--rule);
+    opacity: 0.6;
+  }
+  .brand::before { left: calc(50% - 180px); }
+  .brand::after { right: calc(50% - 180px); }
+
+  .brand-logo {
+    max-width: 220px;
+    max-height: 72px;
+    width: auto;
+    height: auto;
+    display: block;
+    /* 아이보리 배경과 조화롭게: 투명 PNG가 아닌 경우 살짝 블렌딩 */
+    mix-blend-mode: multiply;
+    transition: transform 0.4s ease, opacity 0.3s;
+    opacity: 0;
+  }
+  .brand-logo.loaded { opacity: 1; }
+  .brand-logo:hover { transform: scale(1.03); }
+
+  .brand-fallback {
+    font-family: 'Crimson Pro', serif;
+    font-style: italic;
+    font-size: 28px;
+    font-weight: 500;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+    display: none;
+  }
+  .brand-fallback::before { content: "❦ "; color: var(--accent); font-style: normal; }
+  .brand-fallback::after  { content: " ❦"; color: var(--accent); font-style: normal; }
+  .brand.no-image .brand-logo { display: none; }
+  .brand.no-image .brand-fallback { display: inline-block; }
+
+  .brand-caption {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    opacity: 0.7;
+  }
+
+  @media (max-width: 640px) {
+    .brand::before, .brand::after { display: none; }
+    .brand-logo { max-height: 56px; max-width: 180px; }
+  }
+
+  .hero {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 40px;
+    align-items: end;
+    padding-bottom: 28px;
+    margin-bottom: 48px;
+    border-bottom: 1px solid var(--rule);
+    position: relative;
+  }
+
+  .hero h1 {
+    font-family: 'Crimson Pro', serif;
+    font-weight: 500;
+    font-size: clamp(52px, 8vw, 104px);
+    line-height: 0.92;
+    letter-spacing: -0.03em;
+    color: var(--ink);
+  }
+  .hero h1 em {
+    font-style: italic;
+    font-weight: 400;
+    color: var(--accent-deep);
+  }
+  .hero .sub {
+    font-family: 'Noto Serif KR', serif;
+    font-size: 15px;
+    color: var(--ink-soft);
+    max-width: 340px;
+    line-height: 1.55;
+    text-align: right;
+  }
+  .hero .sub strong {
+    font-weight: 700;
+    color: var(--ink);
+  }
+
+  .hero::after {
+    content: "17ᵗʰ ed.";
+    position: absolute;
+    right: 0;
+    top: -14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+  }
+
+  /* ========== LAYOUT ========== */
+  .grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+    gap: 56px;
+  }
+
+  @media (max-width: 960px) {
+    .grid { grid-template-columns: 1fr; gap: 40px; }
+    .hero { grid-template-columns: 1fr; }
+    .hero .sub { text-align: left; max-width: none; }
+  }
+
+  /* ========== TABS ========== */
+  .tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 28px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .tab {
+    flex: 1;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: 14px 8px;
+    font-family: 'Crimson Pro', 'Noto Serif KR', serif;
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--ink-soft);
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.01em;
+    margin-bottom: -1px;
+  }
+  .tab:hover { color: var(--ink); }
+  .tab.active {
+    color: var(--ink);
+    border-bottom-color: var(--accent);
+  }
+  .tab .num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--accent);
+    margin-right: 6px;
+    letter-spacing: 0.1em;
+  }
+
+  /* ========== FORM ========== */
+  .section-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--accent-deep);
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-label::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--rule);
+    opacity: 0.5;
+  }
+
+  .form-body { display: none; }
+  .form-body.active { display: block; animation: fade 0.3s ease; }
+
+  @keyframes fade {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .field-group {
+    margin-bottom: 22px;
+  }
+
+  .field-row {
+    display: grid;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+  .field-row.cols-2 { grid-template-columns: 1fr 1fr; }
+  .field-row.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .field-row.author { grid-template-columns: 1.2fr 0.8fr 1fr; }
+  .field-row.date { grid-template-columns: 0.8fr 0.8fr 1fr; }
+
+  @media (max-width: 520px) {
+    .field-row.cols-2, .field-row.cols-3, .field-row.author, .field-row.date {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  label .kor {
+    font-family: 'Noto Serif KR', serif;
+    font-size: 12px;
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--ink);
+    margin-right: 6px;
+    font-weight: 500;
+  }
+
+  input[type="text"], input[type="url"], input[type="number"] {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--rule);
+    padding: 8px 2px;
+    font-family: 'Crimson Pro', 'Noto Serif KR', serif;
+    font-size: 17px;
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.2s;
+    width: 100%;
+  }
+  input:focus {
+    border-bottom-color: var(--accent);
+    border-bottom-width: 2px;
+    padding-bottom: 7px;
+  }
+  input::placeholder {
+    color: var(--rule);
+    font-style: italic;
+    opacity: 0.7;
+  }
+
+  .checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    margin-top: 6px;
+  }
+  .checkbox-row input[type="checkbox"] {
+    appearance: none;
+    width: 16px; height: 16px;
+    border: 1.5px solid var(--ink);
+    background: transparent;
+    cursor: pointer;
+    position: relative;
+    border-radius: 0;
+  }
+  .checkbox-row input[type="checkbox"]:checked {
+    background: var(--ink);
+  }
+  .checkbox-row input[type="checkbox"]:checked::after {
+    content: "✓";
+    position: absolute;
+    top: -2px; left: 2px;
+    color: var(--paper);
+    font-size: 13px;
+    font-weight: bold;
+  }
+  .checkbox-row label {
+    font-family: 'Noto Serif KR', serif;
+    font-size: 13px;
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--ink);
+    cursor: pointer;
+    line-height: 1.4;
+  }
+  .checkbox-row label small {
+    display: block;
+    font-size: 11px;
+    color: var(--ink-soft);
+    margin-top: 2px;
+    font-style: italic;
+  }
+
+  /* ========== BUTTONS ========== */
+  .actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 1px solid var(--rule);
+  }
+  .btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    padding: 14px 22px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 500;
+  }
+  .btn-primary {
+    background: var(--ink);
+    color: var(--paper);
+    flex: 1;
+  }
+  .btn-primary:hover {
+    background: var(--accent-deep);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 0 -2px var(--ink), 0 10px 20px var(--shadow);
+  }
+  .btn-secondary {
+    background: transparent;
+    color: var(--ink);
+    border: 1px solid var(--ink);
+  }
+  .btn-secondary:hover {
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  /* ========== OUTPUT ========== */
+  .output {
+    position: sticky;
+    top: 24px;
+  }
+
+  .output-card {
+    background: var(--paper-2);
+    border: 1px solid var(--rule);
+    padding: 28px;
+    margin-bottom: 20px;
+    position: relative;
+    box-shadow: 6px 6px 0 var(--ink);
+  }
+
+  .output-card h3 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--accent-deep);
+    margin-bottom: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .output-card h3 .hint {
+    font-family: 'Noto Serif KR', serif;
+    font-size: 11px;
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--ink-soft);
+    font-weight: 400;
+    font-style: italic;
+  }
+
+  .output-text {
+    font-family: 'Crimson Pro', 'Noto Serif KR', serif;
+    font-size: 16px;
+    line-height: 1.65;
+    color: var(--ink);
+    min-height: 52px;
+    word-break: break-word;
+  }
+  .output-text.bib { text-indent: -28px; padding-left: 28px; }
+  .output-text em { font-style: italic; }
+  .output-text .placeholder {
+    color: var(--ink-soft);
+    font-style: italic;
+    opacity: 0.6;
+  }
+
+  .copy-btn {
+    position: absolute;
+    top: 22px;
+    right: 22px;
+    background: transparent;
+    border: 1px solid var(--ink);
+    padding: 4px 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    cursor: pointer;
+    color: var(--ink);
+    transition: all 0.2s;
+  }
+  .copy-btn:hover {
+    background: var(--ink);
+    color: var(--paper);
+  }
+  .copy-btn.copied {
+    background: var(--accent);
+    color: var(--paper);
+    border-color: var(--accent);
+  }
+
+  /* ========== GUIDE ========== */
+  .guide {
+    margin-top: 72px;
+    padding-top: 40px;
+    border-top: 3px double var(--ink);
+  }
+  .guide h2 {
+    font-family: 'Crimson Pro', serif;
+    font-size: 32px;
+    font-weight: 500;
+    margin-bottom: 20px;
+    letter-spacing: -0.01em;
+  }
+  .guide h2 em { font-style: italic; color: var(--accent-deep); }
+
+  .guide-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 28px;
+    margin-top: 24px;
+  }
+  .guide-card {
+    padding: 20px;
+    border-left: 2px solid var(--accent);
+    background: rgba(184, 137, 43, 0.04);
+  }
+  .guide-card h4 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent-deep);
+    margin-bottom: 8px;
+  }
+  .guide-card p {
+    font-family: 'Noto Serif KR', serif;
+    font-size: 13.5px;
+    line-height: 1.55;
+    color: var(--ink-soft);
+  }
+
+  /* ========== FOOTER ========== */
+  footer {
+    margin-top: 80px;
+    padding-top: 24px;
+    border-top: 1px solid var(--rule);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    color: var(--ink-soft);
+    text-align: center;
+    text-transform: uppercase;
+  }
+
+  /* toast */
+  .toast {
+    position: fixed;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--ink);
+    color: var(--paper);
+    padding: 12px 24px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    opacity: 0;
+    transition: all 0.3s ease;
+    z-index: 1000;
+    pointer-events: none;
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  /* subtle decorative */
+  .ornament {
+    text-align: center;
+    font-family: 'Crimson Pro', serif;
+    color: var(--accent);
+    font-size: 20px;
+    letter-spacing: 1em;
+    margin: 16px 0 0 1em;
+  }
+
+  /* ========== IMAGE SCANNER ========== */
+  .scanner {
+    margin: 0 0 48px;
+    padding: 28px 32px;
+    background: linear-gradient(135deg, rgba(184,137,43,0.06), rgba(162,62,43,0.04));
+    border: 1px solid var(--rule);
+    border-left: 4px solid var(--accent);
+    position: relative;
+  }
+  .scanner::before {
+    content: "SCAN";
+    position: absolute;
+    top: -10px; left: 24px;
+    background: var(--paper);
+    padding: 0 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    color: var(--accent-deep);
+  }
+  .scanner-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+  }
+  .scanner-head h3 {
+    font-family: 'Crimson Pro', serif;
+    font-weight: 500;
+    font-size: 24px;
+    letter-spacing: -0.01em;
+  }
+  .scanner-head h3 em { font-style: italic; color: var(--accent-deep); }
+  .scanner-head .desc {
+    font-family: 'Noto Serif KR', serif;
+    font-size: 13px;
+    color: var(--ink-soft);
+    flex: 1;
+    min-width: 240px;
+    line-height: 1.5;
+  }
+  .dropzone {
+    border: 2px dashed var(--rule);
+    padding: 36px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: rgba(244, 238, 225, 0.4);
+    position: relative;
+    min-height: 140px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+  }
+  .dropzone:hover,
+  .dropzone.dragging {
+    border-color: var(--accent);
+    background: rgba(184, 137, 43, 0.08);
+  }
+  .dropzone.has-image {
+    padding: 16px;
+    border-style: solid;
+    border-color: var(--accent);
+  }
+  .dropzone svg.upload-icon {
+    width: 40px; height: 40px;
+    opacity: 0.45;
+  }
+  .dropzone .dz-title {
+    font-family: 'Crimson Pro', serif;
+    font-size: 19px;
+    color: var(--ink);
+  }
+  .dropzone .dz-sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+  .dropzone .dz-sub kbd {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 2px 6px;
+    border-radius: 2px;
+    margin: 0 2px;
+    font-family: inherit;
+    font-size: 9px;
+  }
+  .preview-wrap {
+    display: none;
+    gap: 16px;
+    align-items: flex-start;
+    text-align: left;
+    width: 100%;
+  }
+  .dropzone.has-image .preview-wrap { display: flex; }
+  .dropzone.has-image .dz-title,
+  .dropzone.has-image .dz-sub,
+  .dropzone.has-image .upload-icon { display: none; }
+  .preview-wrap img {
+    max-width: 160px;
+    max-height: 160px;
+    border: 1px solid var(--rule);
+    box-shadow: 3px 3px 0 var(--ink);
+    object-fit: cover;
+  }
+  .preview-info { flex: 1; min-width: 0; }
+  .preview-info .fname {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--ink);
+    word-break: break-all;
+    margin-bottom: 6px;
+  }
+  .preview-info .fmeta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .scanner-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+  }
+  .btn-scan {
+    background: var(--accent-deep);
+    color: var(--paper);
+    border: none;
+    padding: 12px 20px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 500;
+  }
+  .btn-scan:hover:not(:disabled) {
+    background: var(--ink);
+    transform: translateY(-1px);
+  }
+  .btn-scan:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-scan-ghost {
+    background: transparent;
+    color: var(--ink-soft);
+    border: 1px solid var(--rule);
+    padding: 12px 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-scan-ghost:hover { border-color: var(--ink); color: var(--ink); }
+  .scan-status {
+    margin-top: 14px;
+    padding: 12px 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    display: none;
+    border-left: 2px solid;
+    background: var(--paper-2);
+    line-height: 1.55;
+  }
+  .scan-status.show { display: block; animation: fade 0.3s ease; }
+  .scan-status.loading { border-color: var(--accent); color: var(--accent-deep); }
+  .scan-status.success { border-color: #2d6b3e; color: #2d6b3e; }
+  .scan-status.error { border-color: var(--red); color: var(--red); }
+  .scan-status .dots::after {
+    content: '...';
+    display: inline-block;
+    animation: dotsAnim 1.4s steps(4,end) infinite;
+    width: 1.2em;
+    text-align: left;
+    overflow: hidden;
+    vertical-align: bottom;
+  }
+  @keyframes dotsAnim {
+    0% { width: 0; }
+    100% { width: 1.2em; }
+  }
+  @keyframes autofilled {
+    0% { background: rgba(184,137,43,0.35); }
+    100% { background: transparent; }
+  }
+  input.autofilled { animation: autofilled 1.8s ease; }
+  input.low-confidence {
+    border-bottom-color: var(--red) !important;
+    border-bottom-style: dashed !important;
+  }
+  @media (max-width: 640px) {
+    .scanner { padding: 22px 20px; }
+    .preview-wrap { flex-direction: column; }
+    .preview-wrap img { max-width: 120px; }
+  }
+
+  /* ========== LIBRARY (저장된 인용) ========== */
+  .library {
+    margin-top: 72px;
+    padding-top: 40px;
+    border-top: 3px double var(--ink);
+    position: relative;
+  }
+  .library-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .library-head h2 {
+    font-family: 'Crimson Pro', serif;
+    font-size: 32px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+  }
+  .library-head h2 em { font-style: italic; color: var(--accent-deep); }
+  .library-head h2 .badge {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    background: var(--ink);
+    color: var(--paper);
+    padding: 3px 10px;
+    vertical-align: middle;
+    margin-left: 10px;
+    font-style: normal;
+    font-weight: 500;
+  }
+  .lib-tools {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .lib-tools button {
+    background: transparent;
+    border: 1px solid var(--rule);
+    padding: 7px 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    cursor: pointer;
+    color: var(--ink-soft);
+    transition: all 0.2s;
+  }
+  .lib-tools button:hover {
+    border-color: var(--ink);
+    color: var(--ink);
+    background: var(--paper-2);
+  }
+  .lib-storage-status {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    opacity: 0.7;
+    padding-left: 4px;
+  }
+  .lib-storage-status .dot {
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    margin-right: 5px;
+    vertical-align: middle;
+  }
+  .lib-storage-status.ok .dot { background: #2d6b3e; }
+  .lib-storage-status.warn .dot { background: var(--accent); }
+  .lib-storage-status.err .dot { background: var(--red); }
+
+  .lib-controls {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    margin-bottom: 20px;
+    align-items: center;
+  }
+  .lib-search {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--rule);
+    padding: 10px 4px 10px 28px;
+    font-family: 'Crimson Pro', 'Noto Serif KR', serif;
+    font-size: 16px;
+    color: var(--ink);
+    width: 100%;
+    outline: none;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%233a322b' stroke-width='1.6'><circle cx='11' cy='11' r='7'/><path d='M21 21l-4.35-4.35'/></svg>");
+    background-repeat: no-repeat;
+    background-position: left 2px center;
+  }
+  .lib-search:focus {
+    border-bottom-color: var(--accent);
+  }
+  .lib-filters {
+    display: flex;
+    gap: 4px;
+  }
+  .lib-filter {
+    background: transparent;
+    border: 1px solid var(--rule);
+    padding: 8px 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    cursor: pointer;
+    color: var(--ink-soft);
+    transition: all 0.2s;
+  }
+  .lib-filter:hover { color: var(--ink); }
+  .lib-filter.active {
+    background: var(--ink);
+    color: var(--paper);
+    border-color: var(--ink);
+  }
+
+  @media (max-width: 640px) {
+    .lib-controls { grid-template-columns: 1fr; }
+    .lib-filters { overflow-x: auto; }
+  }
+
+  .lib-list {
+    display: grid;
+    gap: 12px;
+  }
+  .lib-empty {
+    text-align: center;
+    padding: 48px 20px;
+    border: 1px dashed var(--rule);
+    font-family: 'Noto Serif KR', serif;
+    color: var(--ink-soft);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  .lib-empty .big {
+    font-family: 'Crimson Pro', serif;
+    font-style: italic;
+    font-size: 22px;
+    color: var(--ink);
+    display: block;
+    margin-bottom: 8px;
+  }
+
+  .lib-item {
+    border: 1px solid var(--rule);
+    background: var(--paper-2);
+    padding: 18px 20px;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 16px;
+    align-items: start;
+    transition: all 0.2s;
+    position: relative;
+  }
+  .lib-item:hover {
+    border-color: var(--ink);
+    transform: translateX(-2px);
+    box-shadow: 4px 4px 0 var(--ink);
+  }
+  .lib-item .type-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    padding: 4px 8px;
+    border: 1px solid currentColor;
+    white-space: nowrap;
+    align-self: start;
+  }
+  .lib-item[data-type="website"] .type-badge { color: #2d6b3e; }
+  .lib-item[data-type="journal"] .type-badge { color: var(--accent-deep); }
+  .lib-item[data-type="book"]    .type-badge { color: var(--red); }
+
+  .lib-item .body { min-width: 0; }
+  .lib-item .label {
+    font-family: 'Crimson Pro', 'Noto Serif KR', serif;
+    font-size: 17px;
+    color: var(--ink);
+    margin-bottom: 6px;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    line-height: 1.35;
+  }
+  .lib-item .meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+  }
+  .lib-item .meta .sep { margin: 0 6px; opacity: 0.4; }
+  .lib-item .preview {
+    font-family: 'Crimson Pro', 'Noto Serif KR', serif;
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 8px;
+    line-height: 1.5;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+  .lib-item .preview em { font-style: italic; color: var(--ink); }
+
+  .lib-item .item-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .lib-item .item-actions button {
+    background: transparent;
+    border: 1px solid var(--rule);
+    padding: 6px 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    cursor: pointer;
+    color: var(--ink-soft);
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .lib-item .item-actions .btn-load {
+    background: var(--ink);
+    color: var(--paper);
+    border-color: var(--ink);
+  }
+  .lib-item .item-actions .btn-load:hover {
+    background: var(--accent-deep);
+    border-color: var(--accent-deep);
+  }
+  .lib-item .item-actions button:hover {
+    border-color: var(--ink);
+    color: var(--ink);
+  }
+  .lib-item .item-actions .btn-del:hover {
+    background: var(--red);
+    border-color: var(--red);
+    color: var(--paper);
+  }
+
+  @media (max-width: 640px) {
+    .lib-item {
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+    .lib-item .item-actions {
+      flex-direction: row;
+      flex-wrap: wrap;
+    }
+  }
+
+  /* 확인 다이얼로그 (간소화) */
+  .confirm-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(26,22,19,0.55);
+    z-index: 2000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .confirm-backdrop.show { display: flex; }
+  .confirm-box {
+    background: var(--paper);
+    border: 1px solid var(--ink);
+    box-shadow: 8px 8px 0 var(--ink);
+    padding: 28px;
+    max-width: 420px;
+    width: 100%;
+  }
+  .confirm-box h4 {
+    font-family: 'Crimson Pro', serif;
+    font-size: 22px;
+    font-weight: 500;
+    margin-bottom: 10px;
+  }
+  .confirm-box p {
+    font-family: 'Noto Serif KR', serif;
+    font-size: 14px;
+    color: var(--ink-soft);
+    margin-bottom: 20px;
+    line-height: 1.6;
+  }
+  .confirm-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+  }
+  .confirm-actions button {
+    padding: 10px 18px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    cursor: pointer;
+    border: 1px solid var(--ink);
+    background: transparent;
+    color: var(--ink);
+  }
+  .confirm-actions .confirm-yes {
+    background: var(--red);
+    color: var(--paper);
+    border-color: var(--red);
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <!-- MASTHEAD -->
+  <div class="masthead">
+    <div class="left">Vol. XVII · Issue 01 · Est. 2026</div>
+    <div class="right">The <span class="dot">●</span> Chicago Manual of Style</div>
+  </div>
+
+  <!-- BRAND LOGO -->
+  <div class="brand" id="brand">
+    <img
+      src="https://i.ifh.cc/Pc1l4f.png"
+      alt="Brand Logo"
+      class="brand-logo"
+      id="brand-logo"
+      loading="eager"
+      referrerpolicy="no-referrer"
+    />
+    <span class="brand-fallback">Citation House</span>
+    <span class="brand-caption">Academic Citation · Est. MMXXVI</span>
+  </div>
+
+  <div class="hero">
+    <h1>Chicago<br><em>Citation</em><br>Generator</h1>
+    <div class="sub">
+      시카고 스타일 <strong>17판 NB(Notes-Bibliography)</strong> 시스템 기반 출처 생성기.<br>
+      웹사이트 · 학술지 · 단행본 자료의 각주(Footnote)와 참고문헌(Bibliography) 항목을 동시 생성합니다.
+    </div>
+  </div>
+
+  <!-- IMAGE SCANNER -->
+  <div class="scanner">
+    <div class="scanner-head">
+      <h3>Scan from <em>Image</em></h3>
+      <div class="desc">
+        책 표지 · 판권지 · 학술지 첫 페이지 · 웹사이트 스크린샷을 업로드하면
+        서지정보를 자동으로 추출해 아래 폼을 채워드립니다.
+      </div>
+    </div>
+
+    <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="이미지 업로드">
+      <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4">
+        <path d="M12 3v14M5 10l7-7 7 7M4 21h16" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <div class="dz-title">이미지를 끌어다 놓거나 클릭하여 업로드</div>
+      <div class="dz-sub">
+        <kbd>Ctrl/⌘</kbd>+<kbd>V</kbd> 로 붙여넣기도 가능 · JPG · PNG · WebP · 최대 10 MB
+      </div>
+
+      <div class="preview-wrap" id="preview-wrap">
+        <img id="preview-img" alt="preview" />
+        <div class="preview-info">
+          <div class="fname" id="preview-name">—</div>
+          <div class="fmeta" id="preview-meta">—</div>
+        </div>
+      </div>
+      <input type="file" id="file-input" accept="image/*" style="display:none" />
+    </div>
+
+    <div class="scanner-actions" id="scanner-actions" style="display:none;">
+      <button class="btn-scan" id="btn-extract">⚡ Extract Citation</button>
+      <button class="btn-scan-ghost" id="btn-replace">다른 이미지 선택</button>
+      <button class="btn-scan-ghost" id="btn-remove">삭제</button>
+    </div>
+
+    <div class="scan-status" id="scan-status"></div>
+  </div>
+
+  <!-- MAIN GRID -->
+  <div class="grid">
+
+    <!-- LEFT: FORM -->
+    <div class="form">
+      <div class="section-label">Source Type · 자료 형태</div>
+      <div class="tabs">
+        <button class="tab active" data-type="website"><span class="num">01</span>Website</button>
+        <button class="tab" data-type="journal"><span class="num">02</span>Journal</button>
+        <button class="tab" data-type="book"><span class="num">03</span>Book</button>
+      </div>
+
+      <!-- WEBSITE -->
+      <div class="form-body active" data-form="website">
+        <div class="section-label">Author · 저자</div>
+        <div class="field-row author">
+          <div class="field">
+            <label><span class="kor">성</span>Last</label>
+            <input type="text" id="web-last" placeholder="Kim" />
+          </div>
+          <div class="field">
+            <label><span class="kor">이름</span>First</label>
+            <input type="text" id="web-first" placeholder="Andrew" />
+          </div>
+          <div class="field">
+            <label><span class="kor">중간이름</span>Middle</label>
+            <input type="text" id="web-middle" placeholder="J. (선택)" />
+          </div>
+        </div>
+
+        <div class="section-label" style="margin-top:28px;">Page & Site · 페이지·사이트</div>
+        <div class="field-group">
+          <div class="field" style="margin-bottom:14px;">
+            <label><span class="kor">페이지명</span>Page Title</label>
+            <input type="text" id="web-page" placeholder="How I Became a Full-Time Freelance Editor" />
+          </div>
+          <div class="field" style="margin-bottom:14px;">
+            <label><span class="kor">웹사이트명</span>Website Name</label>
+            <input type="text" id="web-site" placeholder="Medium" />
+          </div>
+          <div class="field">
+            <label><span class="kor">URL</span></label>
+            <input type="url" id="web-url" placeholder="https://medium.com/..." />
+          </div>
+          <div class="checkbox-row">
+            <input type="checkbox" id="web-italic" />
+            <label for="web-italic">
+              웹사이트명을 이탤릭체로 표기
+              <small>CMOS 17판: 인쇄판이 존재하는 매체일 경우에만 체크</small>
+            </label>
+          </div>
+        </div>
+
+        <div class="section-label">Published Date · 출판일</div>
+        <div class="field-row date">
+          <div class="field">
+            <label><span class="kor">일</span>Day</label>
+            <input type="number" id="web-day" min="1" max="31" placeholder="28" />
+          </div>
+          <div class="field">
+            <label><span class="kor">월</span>Month</label>
+            <input type="number" id="web-month" min="1" max="12" placeholder="8" />
+          </div>
+          <div class="field">
+            <label><span class="kor">연도</span>Year</label>
+            <input type="number" id="web-year" min="1000" max="2100" placeholder="2020" />
+          </div>
+        </div>
+      </div>
+
+      <!-- JOURNAL -->
+      <div class="form-body" data-form="journal">
+        <div class="section-label">Author · 저자</div>
+        <div class="field-row author">
+          <div class="field">
+            <label><span class="kor">성</span>Last</label>
+            <input type="text" id="jour-last" placeholder="Encarnación-Pinedo" />
+          </div>
+          <div class="field">
+            <label><span class="kor">이름</span>First</label>
+            <input type="text" id="jour-first" placeholder="Estíbaliz" />
+          </div>
+          <div class="field">
+            <label><span class="kor">중간이름</span>Middle</label>
+            <input type="text" id="jour-middle" placeholder="(선택)" />
+          </div>
+        </div>
+
+        <div class="section-label" style="margin-top:28px;">Article · 논문</div>
+        <div class="field" style="margin-bottom:14px;">
+          <label><span class="kor">논문명</span>Article Title</label>
+          <input type="text" id="jour-title" placeholder="On Webbed Monsters, Revolutionary Activists..." />
+        </div>
+        <div class="field" style="margin-bottom:14px;">
+          <label><span class="kor">학술지명</span>Journal Name</label>
+          <input type="text" id="jour-journal" placeholder="Humanities" />
+        </div>
+
+        <div class="field-row cols-3">
+          <div class="field">
+            <label><span class="kor">권</span>Vol.</label>
+            <input type="text" id="jour-vol" placeholder="10" />
+          </div>
+          <div class="field">
+            <label><span class="kor">호</span>No.</label>
+            <input type="text" id="jour-no" placeholder="4" />
+          </div>
+          <div class="field">
+            <label><span class="kor">연도</span>Year</label>
+            <input type="number" id="jour-year" placeholder="2020" />
+          </div>
+        </div>
+
+        <div class="field-row cols-2" style="margin-top:14px;">
+          <div class="field">
+            <label><span class="kor">인용 페이지</span>Page(s) cited</label>
+            <input type="text" id="jour-page" placeholder="1 또는 1-14" />
+          </div>
+          <div class="field">
+            <label><span class="kor">전체 페이지</span>Page range</label>
+            <input type="text" id="jour-range" placeholder="1-14" />
+          </div>
+        </div>
+
+        <div class="section-label" style="margin-top:28px;">Electronic Access (Optional)</div>
+        <div class="field" style="margin-bottom:14px;">
+          <label><span class="kor">DOI 또는 URL</span>DOI or URL</label>
+          <input type="text" id="jour-url" placeholder="10.3390/h10010004 또는 https://..." />
+        </div>
+        <div class="field-row date">
+          <div class="field">
+            <label><span class="kor">접속일</span>Accessed · Day</label>
+            <input type="number" id="jour-aday" min="1" max="31" placeholder="25" />
+          </div>
+          <div class="field">
+            <label>Month</label>
+            <input type="number" id="jour-amonth" min="1" max="12" placeholder="1" />
+          </div>
+          <div class="field">
+            <label>Year</label>
+            <input type="number" id="jour-ayear" placeholder="2021" />
+          </div>
+        </div>
+      </div>
+
+      <!-- BOOK -->
+      <div class="form-body" data-form="book">
+        <div class="section-label">Author · 저자</div>
+        <div class="field-row author">
+          <div class="field">
+            <label><span class="kor">성</span>Last</label>
+            <input type="text" id="book-last" placeholder="Diamond" />
+          </div>
+          <div class="field">
+            <label><span class="kor">이름</span>First</label>
+            <input type="text" id="book-first" placeholder="Jared" />
+          </div>
+          <div class="field">
+            <label><span class="kor">중간이름</span>Middle</label>
+            <input type="text" id="book-middle" placeholder="(선택)" />
+          </div>
+        </div>
+
+        <div class="section-label" style="margin-top:28px;">Book · 단행본</div>
+        <div class="field" style="margin-bottom:14px;">
+          <label><span class="kor">도서명</span>Book Title</label>
+          <input type="text" id="book-title" placeholder="Guns, Germs, and Steel: The Fates of Human Societies" />
+        </div>
+
+        <div class="field-row cols-3">
+          <div class="field">
+            <label><span class="kor">발행지</span>City</label>
+            <input type="text" id="book-city" placeholder="New York City" />
+          </div>
+          <div class="field">
+            <label><span class="kor">발행처</span>Publisher</label>
+            <input type="text" id="book-pub" placeholder="W.W. Norton" />
+          </div>
+          <div class="field">
+            <label><span class="kor">연도</span>Year</label>
+            <input type="number" id="book-year" placeholder="1997" />
+          </div>
+        </div>
+
+        <div class="field" style="margin-top:14px;">
+          <label><span class="kor">인용 페이지 (각주용)</span>Page(s) cited · for Footnote</label>
+          <input type="text" id="book-page" placeholder="25 (선택)" />
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn btn-primary" id="generate-btn">Generate Citation ▸</button>
+        <button class="btn btn-secondary" id="clear-btn">Clear</button>
+      </div>
+    </div>
+
+    <!-- RIGHT: OUTPUT -->
+    <div class="output">
+      <div class="output-card">
+        <h3>
+          <span>① Footnote · 각주 / 미주</span>
+          <span class="hint">텍스트 본문 인용시 사용</span>
+        </h3>
+        <button class="copy-btn" data-target="footnote-out">Copy</button>
+        <div class="output-text" id="footnote-out">
+          <span class="placeholder">자료 정보를 입력하고 Generate를 누르면 각주가 생성됩니다.</span>
+        </div>
+      </div>
+
+      <div class="output-card">
+        <h3>
+          <span>② Bibliography · 참고문헌</span>
+          <span class="hint">문헌 목록 페이지에 사용</span>
+        </h3>
+        <button class="copy-btn" data-target="biblio-out">Copy</button>
+        <div class="output-text bib" id="biblio-out">
+          <span class="placeholder">참고문헌 항목이 여기에 표시됩니다.</span>
+        </div>
+      </div>
+
+      <div class="ornament">❦ · · ·</div>
+    </div>
+  </div>
+
+  <!-- GUIDE -->
+  <div class="guide">
+    <h2>Chicago <em>Style Notes</em></h2>
+    <div class="guide-grid">
+      <div class="guide-card">
+        <h4>NB System</h4>
+        <p>예술·인문학 분야 표준. 각주/미주 + 참고문헌 목록의 3요소로 구성됩니다. 사회과학에서는 Author-Date 방식을 더 자주 사용합니다.</p>
+      </div>
+      <div class="guide-card">
+        <h4>17판 변경점 · Ibid.</h4>
+        <p>"Ibid."의 사용은 지양됩니다. 반복 인용 시 저자 성 + 축약 제목(4단어 이하) + 페이지 형식을 사용하세요.</p>
+      </div>
+      <div class="guide-card">
+        <h4>17판 변경점 · 웹사이트명</h4>
+        <p>웹사이트명은 <em>인쇄판이 존재하는 경우에만</em> 이탤릭체로 표기합니다. 그 외 모든 경우 기본 로마체로 유지하세요.</p>
+      </div>
+      <div class="guide-card">
+        <h4>Accessed Date</h4>
+        <p>출판일/개정일이 없는 웹 자료에 한해 접속일(accessed date)을 표기합니다. 출판일이 있으면 생략하는 것이 원칙입니다.</p>
+      </div>
+      <div class="guide-card">
+        <h4>Image Scan · AI 추출</h4>
+        <p>책 표지, 판권지, 학술지 첫 페이지, 웹 스크린샷을 업로드하면 AI가 서지정보를 추출해 폼을 자동으로 채웁니다. 빨간 점선은 낮은 신뢰도 필드 — 반드시 직접 확인하세요.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- LIBRARY -->
+  <div class="library" id="library">
+    <div class="library-head">
+      <h2>Citation <em>Library</em><span class="badge" id="lib-count">0</span></h2>
+      <div class="lib-tools">
+        <span class="lib-storage-status" id="lib-storage-status"><span class="dot"></span>Loading…</span>
+        <button id="lib-export" title="JSON 파일로 내보내기">Export ↓</button>
+        <button id="lib-import" title="JSON 파일에서 불러오기">Import ↑</button>
+        <button id="lib-clear">Clear All</button>
+        <input type="file" id="lib-import-file" accept="application/json,.json" style="display:none" />
+      </div>
+    </div>
+
+    <div class="lib-controls">
+      <input type="search" id="lib-search" class="lib-search"
+             placeholder="저자 · 제목 · 출판사 · 학술지 등으로 검색..." autocomplete="off" />
+      <div class="lib-filters">
+        <button class="lib-filter active" data-filter="all">All</button>
+        <button class="lib-filter" data-filter="website">Web</button>
+        <button class="lib-filter" data-filter="journal">Journal</button>
+        <button class="lib-filter" data-filter="book">Book</button>
+      </div>
+    </div>
+
+    <div class="lib-list" id="lib-list">
+      <div class="lib-empty" id="lib-empty">
+        <span class="big">Your library is empty.</span>
+        인용을 생성하면 이곳에 자동으로 저장됩니다.<br>
+        저자, 제목, 출판사명 어느 키워드로든 빠르게 찾을 수 있습니다.
+      </div>
+    </div>
+  </div>
+
+  <!-- CONFIRM DIALOG -->
+  <div class="confirm-backdrop" id="confirm-backdrop">
+    <div class="confirm-box">
+      <h4 id="confirm-title">정말 삭제하시겠습니까?</h4>
+      <p id="confirm-message">이 작업은 되돌릴 수 없습니다.</p>
+      <div class="confirm-actions">
+        <button class="confirm-no" id="confirm-no">취소</button>
+        <button class="confirm-yes" id="confirm-yes">삭제</button>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    Built with care · Chicago Manual of Style 17<sup>th</sup> edition · Notes-Bibliography
+  </footer>
+</div>
+
+<div class="toast" id="toast">Copied to clipboard</div>
+
+<script>
+  // ============ IMAGE SCANNER (Vision API) ============
+  (function() {
+    const dz = document.getElementById('dropzone');
+    const fileInput = document.getElementById('file-input');
+    const previewImg = document.getElementById('preview-img');
+    const previewName = document.getElementById('preview-name');
+    const previewMeta = document.getElementById('preview-meta');
+    const actions = document.getElementById('scanner-actions');
+    const btnExtract = document.getElementById('btn-extract');
+    const btnReplace = document.getElementById('btn-replace');
+    const btnRemove = document.getElementById('btn-remove');
+    const statusEl = document.getElementById('scan-status');
+
+    let currentFile = null;     // File
+    let currentB64 = null;      // base64 (no prefix)
+    let currentMime = 'image/jpeg';
+
+    const MAX_BYTES = 10 * 1024 * 1024; // 10MB
+    const MAX_DIM = 1600;
+
+    function setStatus(type, html) {
+      statusEl.className = 'scan-status show ' + type;
+      statusEl.innerHTML = html;
+    }
+    function clearStatus() {
+      statusEl.className = 'scan-status';
+      statusEl.innerHTML = '';
+    }
+
+    function humanSize(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1024*1024) return (bytes/1024).toFixed(1) + ' KB';
+      return (bytes/1024/1024).toFixed(2) + ' MB';
+    }
+
+    // 이미지 리사이즈 → base64
+    async function fileToResizedBase64(file) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        const reader = new FileReader();
+        reader.onload = (e) => { img.src = e.target.result; };
+        reader.onerror = () => reject(new Error('파일 읽기 실패'));
+        img.onload = () => {
+          let { width, height } = img;
+          if (width > MAX_DIM || height > MAX_DIM) {
+            const scale = MAX_DIM / Math.max(width, height);
+            width = Math.round(width * scale);
+            height = Math.round(height * scale);
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width; canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          // JPEG 품질 0.88로 전송 용량 절감
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
+          const b64 = dataUrl.split(',')[1];
+          resolve({ b64, mime: 'image/jpeg', width, height, dataUrl });
+        };
+        img.onerror = () => reject(new Error('이미지 디코딩 실패'));
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function handleFile(file) {
+      if (!file) return;
+      if (!file.type.startsWith('image/')) {
+        setStatus('error', '이미지 파일만 업로드할 수 있습니다. (JPG, PNG, WebP)');
+        return;
+      }
+      if (file.size > MAX_BYTES) {
+        setStatus('error', `파일이 너무 큽니다 (${humanSize(file.size)}). 10MB 이하로 업로드하세요.`);
+        return;
+      }
+      clearStatus();
+      currentFile = file;
+      try {
+        const { b64, mime, width, height, dataUrl } = await fileToResizedBase64(file);
+        currentB64 = b64;
+        currentMime = mime;
+        previewImg.src = dataUrl;
+        previewName.textContent = file.name;
+        previewMeta.textContent = `${width}×${height} · ${humanSize(file.size)} · ${file.type}`;
+        dz.classList.add('has-image');
+        actions.style.display = 'flex';
+      } catch (err) {
+        setStatus('error', '이미지를 처리할 수 없습니다: ' + err.message);
+      }
+    }
+
+    // 클릭 업로드
+    dz.addEventListener('click', () => fileInput.click());
+    dz.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click(); }
+    });
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files[0]) handleFile(e.target.files[0]);
+    });
+
+    // 드래그앤드롭
+    ['dragenter','dragover'].forEach(evt => {
+      dz.addEventListener(evt, (e) => { e.preventDefault(); dz.classList.add('dragging'); });
+    });
+    ['dragleave','drop'].forEach(evt => {
+      dz.addEventListener(evt, (e) => { e.preventDefault(); dz.classList.remove('dragging'); });
+    });
+    dz.addEventListener('drop', (e) => {
+      const file = e.dataTransfer.files[0];
+      if (file) handleFile(file);
+    });
+
+    // 클립보드 붙여넣기
+    window.addEventListener('paste', (e) => {
+      // 입력 필드에 포커스돼 있으면 일반 붙여넣기 허용
+      const active = document.activeElement;
+      if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) return;
+      const items = e.clipboardData?.items || [];
+      for (const it of items) {
+        if (it.type.startsWith('image/')) {
+          const file = it.getAsFile();
+          if (file) { handleFile(file); e.preventDefault(); break; }
+        }
+      }
+    });
+
+    btnReplace.addEventListener('click', () => fileInput.click());
+    btnRemove.addEventListener('click', () => {
+      currentFile = null; currentB64 = null;
+      fileInput.value = '';
+      dz.classList.remove('has-image');
+      actions.style.display = 'none';
+      clearStatus();
+    });
+
+    // ---- Vision API 호출 ----
+    const EXTRACTION_PROMPT = `You are a bibliographic data extractor for the Chicago Manual of Style (17th ed., Notes-Bibliography system).
+
+Analyze the uploaded image and extract bibliographic metadata. The image could be:
+- A book cover or title page or copyright page (자료형: book)
+- A journal article's first page (자료형: journal)
+- A screenshot of a webpage or article (자료형: website)
+
+Return ONLY a valid JSON object with this exact schema (no prose, no markdown fences):
+
+{
+  "source_type": "book" | "journal" | "website",
+  "confidence": {
+    "source_type": 0.0-1.0,
+    "author": 0.0-1.0,
+    "title": 0.0-1.0,
+    "publication": 0.0-1.0,
+    "date": 0.0-1.0
+  },
+  "author": {
+    "last": "string or null",
+    "first": "string or null",
+    "middle": "string or null"
+  },
+  "book": {
+    "title": "string or null",
+    "city": "string or null",
+    "publisher": "string or null",
+    "year": "string or null",
+    "page": null
+  },
+  "journal": {
+    "title": "string or null (article title)",
+    "journal_name": "string or null",
+    "volume": "string or null",
+    "issue": "string or null",
+    "year": "string or null",
+    "page_cited": null,
+    "page_range": "string or null",
+    "doi_or_url": "string or null"
+  },
+  "website": {
+    "page_title": "string or null",
+    "site_name": "string or null",
+    "url": "string or null",
+    "day": "string or null",
+    "month": "string or null (numeric 1-12)",
+    "year": "string or null",
+    "italic_site": false
+  },
+  "note": "one short line on what you saw, 2-12 words"
+}
+
+Rules:
+- Fill only the nested object matching source_type; leave the other two objects' fields null.
+- For authors: if multiple, return ONLY the first author.
+- For month: return numeric string "1" to "12".
+- Use null (not empty string) when a field is absent or unreadable.
+- For italic_site: true only if the website name corresponds to an established print publication (e.g., "The New York Times"), false otherwise.
+- Do not invent data. Low confidence values are acceptable.
+- Output MUST be parseable JSON only.`;
+
+    async function extractCitation() {
+      if (!currentB64) {
+        setStatus('error', '먼저 이미지를 업로드하세요.');
+        return;
+      }
+      btnExtract.disabled = true;
+      setStatus('loading', '<span class="dots">이미지를 분석 중입니다</span>');
+
+      try {
+        const response = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: "claude-sonnet-4-20250514",
+            max_tokens: 1000,
+            messages: [{
+              role: "user",
+              content: [
+                { type: "image", source: { type: "base64", media_type: currentMime, data: currentB64 } },
+                { type: "text", text: EXTRACTION_PROMPT }
+              ]
+            }]
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`API 응답 오류 (${response.status})`);
+        }
+        const data = await response.json();
+        const textBlocks = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n').trim();
+        if (!textBlocks) throw new Error('응답이 비어있습니다.');
+
+        // JSON 파싱: 코드블록/여백 제거
+        let jsonStr = textBlocks.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
+        // 첫 { 부터 마지막 } 까지 추출
+        const firstBrace = jsonStr.indexOf('{');
+        const lastBrace = jsonStr.lastIndexOf('}');
+        if (firstBrace >= 0 && lastBrace > firstBrace) {
+          jsonStr = jsonStr.slice(firstBrace, lastBrace + 1);
+        }
+
+        let parsed;
+        try { parsed = JSON.parse(jsonStr); }
+        catch (err) { throw new Error('AI 응답을 JSON으로 해석할 수 없습니다.'); }
+
+        applyExtraction(parsed);
+
+        const conf = parsed.confidence || {};
+        const avgConf = ['source_type','author','title','publication','date']
+          .map(k => typeof conf[k] === 'number' ? conf[k] : 0)
+          .reduce((a,b) => a+b, 0) / 5;
+        const confPct = Math.round(avgConf * 100);
+        const typeKor = {book:'단행본', journal:'학술지', website:'웹사이트'}[parsed.source_type] || '알 수 없음';
+
+        setStatus('success',
+          `✓ <strong>${typeKor}</strong>으로 판정 · 평균 신뢰도 ${confPct}% · ` +
+          `<em>"${(parsed.note || '').replace(/</g,'&lt;')}"</em><br>` +
+          `→ 폼에 자동 입력되었습니다. 빨간 점선 필드는 신뢰도가 낮으니 <strong>반드시 확인</strong>하세요.`
+        );
+
+      } catch (err) {
+        console.error(err);
+        setStatus('error', '추출 실패: ' + err.message + '<br>직접 입력하거나 다른 이미지로 재시도하세요.');
+      } finally {
+        btnExtract.disabled = false;
+      }
+    }
+
+    btnExtract.addEventListener('click', extractCitation);
+
+    // ---- 폼 자동 채움 ----
+    function fillField(id, value, isLowConf) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (value === null || value === undefined) return;
+      el.value = String(value);
+      el.classList.remove('autofilled', 'low-confidence');
+      // 리플로우 후 재적용 (애니메이션 재시작)
+      void el.offsetWidth;
+      el.classList.add('autofilled');
+      if (isLowConf) el.classList.add('low-confidence');
+    }
+
+    function applyExtraction(data) {
+      const type = data.source_type;
+      const conf = data.confidence || {};
+      const lowAuthor = (conf.author || 0) < 0.6;
+      const lowTitle = (conf.title || 0) < 0.6;
+      const lowPub = (conf.publication || 0) < 0.6;
+      const lowDate = (conf.date || 0) < 0.6;
+
+      const author = data.author || {};
+
+      if (type === 'website') {
+        switchTab('website');
+        const w = data.website || {};
+        fillField('web-last', author.last, lowAuthor);
+        fillField('web-first', author.first, lowAuthor);
+        fillField('web-middle', author.middle, lowAuthor);
+        fillField('web-page', w.page_title, lowTitle);
+        fillField('web-site', w.site_name, lowPub);
+        fillField('web-url', w.url, lowPub);
+        fillField('web-day', w.day, lowDate);
+        fillField('web-month', w.month, lowDate);
+        fillField('web-year', w.year, lowDate);
+        const italicEl = document.getElementById('web-italic');
+        if (italicEl && typeof w.italic_site === 'boolean') italicEl.checked = w.italic_site;
+      } else if (type === 'journal') {
+        switchTab('journal');
+        const j = data.journal || {};
+        fillField('jour-last', author.last, lowAuthor);
+        fillField('jour-first', author.first, lowAuthor);
+        fillField('jour-middle', author.middle, lowAuthor);
+        fillField('jour-title', j.title, lowTitle);
+        fillField('jour-journal', j.journal_name, lowPub);
+        fillField('jour-vol', j.volume, lowPub);
+        fillField('jour-no', j.issue, lowPub);
+        fillField('jour-year', j.year, lowDate);
+        fillField('jour-page', j.page_cited, false);
+        fillField('jour-range', j.page_range, false);
+        fillField('jour-url', j.doi_or_url, false);
+      } else if (type === 'book') {
+        switchTab('book');
+        const b = data.book || {};
+        fillField('book-last', author.last, lowAuthor);
+        fillField('book-first', author.first, lowAuthor);
+        fillField('book-middle', author.middle, lowAuthor);
+        fillField('book-title', b.title, lowTitle);
+        fillField('book-city', b.city, lowPub);
+        fillField('book-pub', b.publisher, lowPub);
+        fillField('book-year', b.year, lowDate);
+        fillField('book-page', b.page, false);
+      }
+
+      // 자동 생성
+      setTimeout(() => {
+        const genBtn = document.getElementById('generate-btn');
+        if (genBtn) genBtn.click();
+        // 폼 영역으로 부드럽게 스크롤
+        document.querySelector('.grid')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 300);
+    }
+
+    function switchTab(type) {
+      const tab = document.querySelector(`.tab[data-type="${type}"]`);
+      if (tab) tab.click();
+    }
+  })();
+
+  // ============ BRAND LOGO FALLBACK ============
+  (function() {
+    const brand = document.getElementById('brand');
+    const logo = document.getElementById('brand-logo');
+    if (!logo) return;
+    logo.addEventListener('load', () => {
+      // 이미지가 실제로 로드되고 크기가 있을 때만 표시
+      if (logo.naturalWidth > 0) {
+        logo.classList.add('loaded');
+      } else {
+        brand.classList.add('no-image');
+      }
+    });
+    logo.addEventListener('error', () => {
+      brand.classList.add('no-image');
+    });
+    // 이미 캐시되어 load 이벤트가 안 뜨는 경우 대비
+    if (logo.complete) {
+      if (logo.naturalWidth > 0) logo.classList.add('loaded');
+      else brand.classList.add('no-image');
+    }
+  })();
+
+  // ============ TAB SWITCHING ============
+  const tabs = document.querySelectorAll('.tab');
+  const forms = document.querySelectorAll('.form-body');
+  let activeType = 'website';
+
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      activeType = tab.dataset.type;
+      tabs.forEach(t => t.classList.toggle('active', t === tab));
+      forms.forEach(f => f.classList.toggle('active', f.dataset.form === activeType));
+      // 탭 변경 시 출력 초기화하지 않음 (유저가 비교할 수 있게)
+    });
+  });
+
+  // ============ HELPERS ============
+  const MONTHS = ["", "January", "February", "March", "April", "May", "June",
+                  "July", "August", "September", "October", "November", "December"];
+
+  function val(id) {
+    const el = document.getElementById(id);
+    return el ? el.value.trim() : '';
+  }
+
+  function formatAuthorFirstName(first, middle) {
+    // "Andrew J." 또는 "Andrew"
+    if (!first) return '';
+    let name = first;
+    if (middle) {
+      // 중간이름이 한 글자거나 이미 점이 있으면 그대로, 아니면 이니셜+점
+      if (middle.length === 1) name += ` ${middle}.`;
+      else if (middle.endsWith('.')) name += ` ${middle}`;
+      else name += ` ${middle}`;
+    }
+    return name;
+  }
+
+  // 각주용: "First Middle Last"
+  function authorForFootnote(last, first, middle) {
+    const firstPart = formatAuthorFirstName(first, middle);
+    if (!last && !firstPart) return '';
+    if (!last) return firstPart;
+    if (!firstPart) return last;
+    return `${firstPart} ${last}`;
+  }
+
+  // 참고문헌용: "Last, First Middle"
+  function authorForBibliography(last, first, middle) {
+    const firstPart = formatAuthorFirstName(first, middle);
+    if (!last && !firstPart) return '';
+    if (!last) return firstPart;
+    if (!firstPart) return last + '.';
+    return `${last}, ${firstPart}`;
+  }
+
+  function formatDate(day, month, year) {
+    // Chicago: Month Day, Year
+    if (!year) return '';
+    const m = parseInt(month, 10);
+    const monthName = (m >= 1 && m <= 12) ? MONTHS[m] : '';
+    if (monthName && day) return `${monthName} ${day}, ${year}`;
+    if (monthName) return `${monthName} ${year}`;
+    return year;
+  }
+
+  // 이탤릭을 <em>으로 감싸는 마커: __ITAL__text__ITAL_END__
+  // HTML 출력 시 변환, 복사 시엔 제거
+  function wrapItalic(text) {
+    if (!text) return '';
+    return `__ITAL__${text}__ITAL_END__`;
+  }
+
+  function renderHTML(s) {
+    return s.replace(/__ITAL__/g, '<em>').replace(/__ITAL_END__/g, '</em>');
+  }
+  function renderPlain(s) {
+    // 복사용 — 마커 제거만. (이탤릭은 일반 텍스트에선 표현 불가)
+    return s.replace(/__ITAL__/g, '').replace(/__ITAL_END__/g, '');
+  }
+
+  function isDOI(s) {
+    if (!s) return false;
+    return /^10\.\d{4,}/.test(s);
+  }
+  function normalizeDoiOrUrl(s) {
+    if (!s) return '';
+    if (isDOI(s)) return `https://doi.org/${s}`;
+    return s;
+  }
+
+  // ============ CITATION BUILDERS ============
+
+  function buildWebsite() {
+    const last = val('web-last');
+    const first = val('web-first');
+    const middle = val('web-middle');
+    const page = val('web-page');
+    const site = val('web-site');
+    const url = val('web-url');
+    const italic = document.getElementById('web-italic').checked;
+    const date = formatDate(val('web-day'), val('web-month'), val('web-year'));
+
+    const siteFormatted = italic ? wrapItalic(site) : site;
+    const authorFn = authorForFootnote(last, first, middle);
+    const authorBib = authorForBibliography(last, first, middle);
+
+    // Footnote: 1. First Last, "Page Title," Site Name, Date, URL.
+    let fn = '1. ';
+    if (authorFn) fn += `${authorFn}, `;
+    if (page) fn += `“${page},” `;
+    if (siteFormatted) fn += `${siteFormatted}, `;
+    if (date) fn += `${date}, `;
+    if (url) fn += `${url}.`;
+    else fn = fn.replace(/,\s*$/, '.');
+
+    // Bibliography: Last, First. "Page Title." Site Name. Date. URL.
+    let bib = '';
+    if (authorBib) bib += `${authorBib}. `;
+    if (page) bib += `“${page}.” `;
+    if (siteFormatted) bib += `${siteFormatted}. `;
+    if (date) bib += `${date}. `;
+    if (url) bib += `${url}.`;
+    else bib = bib.replace(/\.\s*$/, '.').trim();
+
+    return { fn: fn.trim(), bib: bib.trim() };
+  }
+
+  function buildJournal() {
+    const last = val('jour-last');
+    const first = val('jour-first');
+    const middle = val('jour-middle');
+    const title = val('jour-title');
+    const journal = val('jour-journal');
+    const vol = val('jour-vol');
+    const no = val('jour-no');
+    const year = val('jour-year');
+    const pageCited = val('jour-page');
+    const range = val('jour-range');
+    const urlRaw = val('jour-url');
+    const url = normalizeDoiOrUrl(urlRaw);
+    const accessed = formatDate(val('jour-aday'), val('jour-amonth'), val('jour-ayear'));
+
+    const journalIt = wrapItalic(journal);
+    const authorFn = authorForFootnote(last, first, middle);
+    const authorBib = authorForBibliography(last, first, middle);
+
+    // Footnote: 1. First Last, "Title," Journal Vol, no. N (Year): Page(s), accessed Date, URL.
+    let fn = '1. ';
+    if (authorFn) fn += `${authorFn}, `;
+    if (title) fn += `“${title},” `;
+    if (journal) fn += `${journalIt} `;
+    if (vol) fn += `${vol}`;
+    if (no) fn += `, no. ${no}`;
+    if (year) fn += ` (${year})`;
+    if (pageCited) fn += `: ${pageCited}`;
+    if (url && accessed) fn += `, accessed ${accessed}, ${url}`;
+    else if (url) fn += `, ${url}`;
+    else if (accessed) fn += `, accessed ${accessed}`;
+    fn = fn.trim().replace(/,\s*$/, '') + '.';
+
+    // Bibliography: Last, First. "Title." Journal Vol, no. N (Year): Page range. Accessed Date. URL.
+    let bib = '';
+    if (authorBib) bib += `${authorBib}. `;
+    if (title) bib += `“${title}.” `;
+    if (journal) bib += `${journalIt} `;
+    if (vol) bib += `${vol}`;
+    if (no) bib += `, no. ${no}`;
+    if (year) bib += ` (${year})`;
+    if (range) bib += `: ${range}`;
+    else if (pageCited) bib += `: ${pageCited}`;
+    bib = bib.trim().replace(/[.,]\s*$/, '') + '.';
+    if (accessed) bib += ` Accessed ${accessed}.`;
+    if (url) bib += ` ${url}.`;
+
+    return { fn, bib };
+  }
+
+  function buildBook() {
+    const last = val('book-last');
+    const first = val('book-first');
+    const middle = val('book-middle');
+    const title = val('book-title');
+    const city = val('book-city');
+    const pub = val('book-pub');
+    const year = val('book-year');
+    const page = val('book-page');
+
+    const titleIt = wrapItalic(title);
+    const authorFn = authorForFootnote(last, first, middle);
+    const authorBib = authorForBibliography(last, first, middle);
+
+    // pub info: (City: Publisher, Year)
+    const pubParts = [];
+    if (city && pub) pubParts.push(`${city}: ${pub}`);
+    else if (city) pubParts.push(city);
+    else if (pub) pubParts.push(pub);
+    if (year) pubParts.push(year);
+    const pubStr = pubParts.length ? `(${pubParts.join(', ')})` : '';
+
+    // Footnote: 1. First Last, Title (City: Pub, Year), Page.
+    let fn = '1. ';
+    if (authorFn) fn += `${authorFn}, `;
+    if (title) fn += `${titleIt} `;
+    if (pubStr) fn += pubStr;
+    if (page) fn += `, ${page}`;
+    fn = fn.trim().replace(/,\s*$/, '') + '.';
+
+    // Bibliography: Last, First. Title. City: Pub, Year.
+    let bib = '';
+    if (authorBib) bib += `${authorBib}. `;
+    if (title) bib += `${titleIt}. `;
+    // 참고문헌에서는 괄호 없이
+    const bibPubParts = [];
+    if (city && pub) bibPubParts.push(`${city}: ${pub}`);
+    else if (city) bibPubParts.push(city);
+    else if (pub) bibPubParts.push(pub);
+    if (year) bibPubParts.push(year);
+    if (bibPubParts.length) bib += `${bibPubParts.join(', ')}.`;
+
+    return { fn: fn.trim(), bib: bib.trim() };
+  }
+
+  // ============ GENERATE ============
+  function generate() {
+    let result;
+    if (activeType === 'website') result = buildWebsite();
+    else if (activeType === 'journal') result = buildJournal();
+    else result = buildBook();
+
+    const fnEl = document.getElementById('footnote-out');
+    const bibEl = document.getElementById('biblio-out');
+
+    // 빈 결과 체크
+    const fnClean = renderPlain(result.fn).replace(/^1\.\s*/, '').trim();
+    if (!fnClean || fnClean === '.') {
+      fnEl.innerHTML = '<span class="placeholder">입력된 정보가 부족합니다. 최소한 저자·제목 등을 입력하세요.</span>';
+      bibEl.innerHTML = '<span class="placeholder">입력된 정보가 부족합니다.</span>';
+      return;
+    }
+
+    fnEl.innerHTML = renderHTML(result.fn);
+    bibEl.innerHTML = renderHTML(result.bib);
+
+    // 복사용 텍스트 저장
+    fnEl.dataset.plain = renderPlain(result.fn);
+    bibEl.dataset.plain = renderPlain(result.bib);
+
+    // 라이브러리에 자동 저장
+    if (window.CitationLibrary) {
+      window.CitationLibrary.save({
+        type: activeType,
+        formData: collectFormData(activeType),
+        footnoteHTML: result.fn,
+        bibliographyHTML: result.bib,
+        footnote: renderPlain(result.fn),
+        bibliography: renderPlain(result.bib)
+      });
+    }
+  }
+
+  // 현재 활성 탭의 모든 폼 입력값 수집
+  function collectFormData(type) {
+    const form = document.querySelector(`.form-body[data-form="${type}"]`);
+    if (!form) return {};
+    const data = {};
+    form.querySelectorAll('input').forEach(inp => {
+      if (inp.type === 'checkbox') data[inp.id] = inp.checked;
+      else data[inp.id] = inp.value;
+    });
+    return data;
+  }
+
+  // 저장된 데이터를 폼에 복원
+  function restoreFormData(type, data) {
+    const form = document.querySelector(`.form-body[data-form="${type}"]`);
+    if (!form || !data) return;
+    form.querySelectorAll('input').forEach(inp => {
+      if (!(inp.id in data)) return;
+      if (inp.type === 'checkbox') inp.checked = !!data[inp.id];
+      else inp.value = data[inp.id] || '';
+    });
+  }
+
+  document.getElementById('generate-btn').addEventListener('click', generate);
+
+  // Enter 키로도 생성
+  document.querySelectorAll('input').forEach(inp => {
+    inp.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        generate();
+      }
+    });
+  });
+
+  // ============ CLEAR ============
+  document.getElementById('clear-btn').addEventListener('click', () => {
+    const activeForm = document.querySelector(`.form-body[data-form="${activeType}"]`);
+    activeForm.querySelectorAll('input').forEach(inp => {
+      if (inp.type === 'checkbox') inp.checked = false;
+      else inp.value = '';
+    });
+    document.getElementById('footnote-out').innerHTML =
+      '<span class="placeholder">자료 정보를 입력하고 Generate를 누르면 각주가 생성됩니다.</span>';
+    document.getElementById('biblio-out').innerHTML =
+      '<span class="placeholder">참고문헌 항목이 여기에 표시됩니다.</span>';
+  });
+
+  // ============ COPY ============
+  const toast = document.getElementById('toast');
+  let toastTimer;
+
+  function showToast(msg) {
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 1800);
+  }
+
+  document.querySelectorAll('.copy-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const target = document.getElementById(btn.dataset.target);
+      const text = target.dataset.plain || target.textContent;
+      if (!text || text.includes('입력된') || text.includes('자료 정보를')) {
+        showToast('Nothing to copy');
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(text);
+        btn.classList.add('copied');
+        btn.textContent = 'Copied ✓';
+        showToast('Copied to clipboard');
+        setTimeout(() => {
+          btn.classList.remove('copied');
+          btn.textContent = 'Copy';
+        }, 1500);
+      } catch (err) {
+        showToast('Copy failed');
+      }
+    });
+  });
+
+  // ============ CITATION LIBRARY ============
+  (function() {
+    const STORAGE_KEY = 'chicago_citation_library_v1';
+    const MAX_ITEMS = 500;
+
+    // 스토리지 어댑터: window.storage (Claude artifacts) → localStorage → memory
+    let adapter = null;
+    let memoryStore = [];
+
+    async function detectStorage() {
+      // 1) window.storage (artifacts persistent storage)
+      if (typeof window.storage === 'object' && window.storage && typeof window.storage.get === 'function') {
+        try {
+          // 동작 테스트
+          await window.storage.list('_probe_');
+          return { type: 'artifact',
+            async load() {
+              try {
+                const res = await window.storage.get(STORAGE_KEY);
+                return res ? JSON.parse(res.value) : [];
+              } catch(e) { return []; }
+            },
+            async save(items) {
+              await window.storage.set(STORAGE_KEY, JSON.stringify(items));
+            }
+          };
+        } catch(e) { /* fallthrough */ }
+      }
+      // 2) localStorage
+      try {
+        const testKey = '__storage_test__';
+        localStorage.setItem(testKey, '1');
+        localStorage.removeItem(testKey);
+        return { type: 'local',
+          async load() {
+            try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
+            catch(e) { return []; }
+          },
+          async save(items) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+          }
+        };
+      } catch(e) { /* fallthrough */ }
+      // 3) memory only
+      return { type: 'memory',
+        async load() { return memoryStore.slice(); },
+        async save(items) { memoryStore = items.slice(); }
+      };
+    }
+
+    let items = [];
+
+    function makeHash(data) {
+      // 폼 데이터 기반 간단 해시 (중복 감지용)
+      const str = JSON.stringify(data);
+      let h = 0;
+      for (let i = 0; i < str.length; i++) {
+        h = ((h << 5) - h + str.charCodeAt(i)) | 0;
+      }
+      return 'c' + Math.abs(h).toString(36);
+    }
+
+    function makeLabel(type, formData) {
+      // 자동 생성 제목
+      if (type === 'website') {
+        const title = formData['web-page'] || '(제목 없음)';
+        const author = [formData['web-last'], formData['web-first']].filter(Boolean).join(', ');
+        return author ? `${title} — ${author}` : title;
+      }
+      if (type === 'journal') {
+        const title = formData['jour-title'] || '(제목 없음)';
+        const author = [formData['jour-last'], formData['jour-first']].filter(Boolean).join(', ');
+        return author ? `${title} — ${author}` : title;
+      }
+      if (type === 'book') {
+        const title = formData['book-title'] || '(제목 없음)';
+        const author = [formData['book-last'], formData['book-first']].filter(Boolean).join(', ');
+        return author ? `${title} — ${author}` : title;
+      }
+      return '(제목 없음)';
+    }
+
+    function formatRelTime(ts) {
+      const diff = (Date.now() - ts) / 1000;
+      if (diff < 60) return '방금';
+      if (diff < 3600) return `${Math.floor(diff/60)}분 전`;
+      if (diff < 86400) return `${Math.floor(diff/3600)}시간 전`;
+      if (diff < 86400*7) return `${Math.floor(diff/86400)}일 전`;
+      const d = new Date(ts);
+      return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
+    }
+
+    async function persist() {
+      try {
+        await adapter.save(items);
+        return true;
+      } catch (e) {
+        console.error('저장 실패:', e);
+        return false;
+      }
+    }
+
+    async function save(entry) {
+      const hash = makeHash(entry.formData);
+      const now = Date.now();
+      const existing = items.find(it => it.id === hash);
+
+      if (existing) {
+        // 중복 — 사용 횟수/시간만 갱신
+        existing.updatedAt = now;
+        existing.useCount = (existing.useCount || 1) + 1;
+        // 텍스트는 최신으로 갱신 (사용자가 수정한 경우 반영)
+        existing.footnote = entry.footnote;
+        existing.bibliography = entry.bibliography;
+        existing.footnoteHTML = entry.footnoteHTML;
+        existing.bibliographyHTML = entry.bibliographyHTML;
+      } else {
+        items.unshift({
+          id: hash,
+          type: entry.type,
+          label: makeLabel(entry.type, entry.formData),
+          formData: entry.formData,
+          footnote: entry.footnote,
+          bibliography: entry.bibliography,
+          footnoteHTML: entry.footnoteHTML,
+          bibliographyHTML: entry.bibliographyHTML,
+          createdAt: now,
+          updatedAt: now,
+          useCount: 1
+        });
+        if (items.length > MAX_ITEMS) items = items.slice(0, MAX_ITEMS);
+      }
+      await persist();
+      render();
+    }
+
+    async function remove(id) {
+      items = items.filter(it => it.id !== id);
+      await persist();
+      render();
+    }
+
+    async function clearAll() {
+      items = [];
+      await persist();
+      render();
+    }
+
+    // ---- DOM refs ----
+    const listEl = document.getElementById('lib-list');
+    const emptyEl = document.getElementById('lib-empty');
+    const searchEl = document.getElementById('lib-search');
+    const countEl = document.getElementById('lib-count');
+    const filterBtns = document.querySelectorAll('.lib-filter');
+    const statusEl = document.getElementById('lib-storage-status');
+
+    let currentFilter = 'all';
+    let currentQuery = '';
+
+    function escapeHTML(s) {
+      return String(s).replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[c]));
+    }
+
+    // 이탤릭 마커를 HTML em 태그로 (라이브러리 미리보기용)
+    function renderMarkers(s) {
+      return escapeHTML(s || '')
+        .replace(/__ITAL__/g, '<em>')
+        .replace(/__ITAL_END__/g, '</em>');
+    }
+    function stripMarkers(s) {
+      return (s || '').replace(/__ITAL__/g, '').replace(/__ITAL_END__/g, '');
+    }
+
+    function filtered() {
+      const q = currentQuery.trim().toLowerCase();
+      return items.filter(it => {
+        if (currentFilter !== 'all' && it.type !== currentFilter) return false;
+        if (!q) return true;
+        const hay = [
+          it.label,
+          stripMarkers(it.footnote),
+          stripMarkers(it.bibliography),
+          Object.values(it.formData || {}).filter(v => typeof v === 'string').join(' ')
+        ].join(' ').toLowerCase();
+        return hay.includes(q);
+      });
+    }
+
+    function render() {
+      countEl.textContent = items.length;
+      const list = filtered();
+      if (items.length === 0) {
+        emptyEl.style.display = 'block';
+        emptyEl.innerHTML = '<span class="big">Your library is empty.</span>인용을 생성하면 이곳에 자동으로 저장됩니다.<br>저자, 제목, 출판사명 어느 키워드로든 빠르게 찾을 수 있습니다.';
+        listEl.querySelectorAll('.lib-item').forEach(el => el.remove());
+        return;
+      }
+      if (list.length === 0) {
+        emptyEl.style.display = 'block';
+        emptyEl.innerHTML = '<span class="big">검색 결과 없음</span>다른 키워드 또는 필터로 시도해보세요.';
+        listEl.querySelectorAll('.lib-item').forEach(el => el.remove());
+        return;
+      }
+      emptyEl.style.display = 'none';
+
+      const typeLabel = { website: 'WEB', journal: 'JOURNAL', book: 'BOOK' };
+
+      // 기존 항목 제거 후 재생성 (수백 개 이내 성능 충분)
+      listEl.querySelectorAll('.lib-item').forEach(el => el.remove());
+
+      const frag = document.createDocumentFragment();
+      list.forEach(it => {
+        const wrap = document.createElement('div');
+        wrap.className = 'lib-item';
+        wrap.dataset.type = it.type;
+        wrap.dataset.id = it.id;
+
+        const useText = it.useCount > 1 ? `·&nbsp;${it.useCount}회 사용` : '';
+
+        wrap.innerHTML = `
+          <div class="type-badge">${typeLabel[it.type] || it.type}</div>
+          <div class="body">
+            <div class="label">${escapeHTML(it.label)}</div>
+            <div class="meta">
+              ${formatRelTime(it.updatedAt)}
+              <span class="sep">·</span>
+              ${new Date(it.createdAt).toISOString().slice(0,10)}
+              ${useText ? `<span class="sep">·</span>${useText}` : ''}
+            </div>
+            <div class="preview">${renderMarkers(it.bibliography)}</div>
+          </div>
+          <div class="item-actions">
+            <button class="btn-load" data-act="load">▸ Load</button>
+            <button data-act="copy-fn">Copy Footnote</button>
+            <button data-act="copy-bib">Copy Bib.</button>
+            <button class="btn-del" data-act="del">Delete</button>
+          </div>
+        `;
+        frag.appendChild(wrap);
+      });
+      listEl.appendChild(frag);
+    }
+
+    // ---- 이벤트 위임 ----
+    listEl.addEventListener('click', async (e) => {
+      const btn = e.target.closest('button[data-act]');
+      if (!btn) return;
+      const itemEl = btn.closest('.lib-item');
+      if (!itemEl) return;
+      const id = itemEl.dataset.id;
+      const item = items.find(it => it.id === id);
+      if (!item) return;
+
+      const act = btn.dataset.act;
+      if (act === 'load') {
+        // 탭 전환 후 폼 복원
+        const tabBtn = document.querySelector(`.tab[data-type="${item.type}"]`);
+        if (tabBtn) tabBtn.click();
+        restoreFormData(item.type, item.formData);
+        // 생성 자동 실행
+        setTimeout(() => document.getElementById('generate-btn').click(), 100);
+        // 상단으로 스크롤
+        document.querySelector('.grid')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        showToastMini('불러왔습니다');
+      } else if (act === 'copy-fn') {
+        await navigator.clipboard.writeText(stripMarkers(item.footnote));
+        showToastMini('각주 복사됨');
+      } else if (act === 'copy-bib') {
+        await navigator.clipboard.writeText(stripMarkers(item.bibliography));
+        showToastMini('참고문헌 복사됨');
+      } else if (act === 'del') {
+        askConfirm('이 인용을 삭제합니까?', item.label, async () => {
+          await remove(id);
+          showToastMini('삭제됨');
+        });
+      }
+    });
+
+    function showToastMini(msg) {
+      const toast = document.getElementById('toast');
+      if (!toast) return;
+      toast.textContent = msg;
+      toast.classList.add('show');
+      clearTimeout(toast._t);
+      toast._t = setTimeout(() => toast.classList.remove('show'), 1500);
+    }
+
+    // ---- 검색/필터 ----
+    let searchDebounce;
+    searchEl.addEventListener('input', (e) => {
+      clearTimeout(searchDebounce);
+      searchDebounce = setTimeout(() => {
+        currentQuery = e.target.value;
+        render();
+      }, 120);
+    });
+    filterBtns.forEach(b => {
+      b.addEventListener('click', () => {
+        filterBtns.forEach(x => x.classList.toggle('active', x === b));
+        currentFilter = b.dataset.filter;
+        render();
+      });
+    });
+
+    // ---- Export / Import / Clear ----
+    document.getElementById('lib-export').addEventListener('click', () => {
+      if (items.length === 0) { showToastMini('내보낼 항목 없음'); return; }
+      const blob = new Blob([JSON.stringify({ version: 1, exportedAt: Date.now(), items }, null, 2)],
+        { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `chicago-library-${new Date().toISOString().slice(0,10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToastMini(`${items.length}개 내보냄`);
+    });
+
+    document.getElementById('lib-import').addEventListener('click', () => {
+      document.getElementById('lib-import-file').click();
+    });
+
+    document.getElementById('lib-import-file').addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+        const incoming = Array.isArray(data) ? data : (data.items || []);
+        if (!Array.isArray(incoming)) throw new Error('형식 오류');
+        // 병합 (id 기준 중복 제거, 최신 updatedAt 유지)
+        const map = new Map(items.map(it => [it.id, it]));
+        let added = 0;
+        incoming.forEach(it => {
+          if (!it || !it.id || !it.type) return;
+          const existing = map.get(it.id);
+          if (!existing || (it.updatedAt || 0) > (existing.updatedAt || 0)) {
+            map.set(it.id, it);
+            if (!existing) added++;
+          }
+        });
+        items = Array.from(map.values()).sort((a,b) => (b.updatedAt||0) - (a.updatedAt||0));
+        await persist();
+        render();
+        showToastMini(`${added}개 추가, 총 ${items.length}개`);
+      } catch (err) {
+        showToastMini('가져오기 실패: ' + err.message);
+      } finally {
+        e.target.value = '';
+      }
+    });
+
+    document.getElementById('lib-clear').addEventListener('click', () => {
+      if (items.length === 0) { showToastMini('비어있음'); return; }
+      askConfirm(`전체 ${items.length}개 삭제`, '이 작업은 되돌릴 수 없습니다. 먼저 Export로 백업해두시는 것을 권장합니다.', async () => {
+        await clearAll();
+        showToastMini('전체 삭제됨');
+      });
+    });
+
+    // ---- 확인 다이얼로그 ----
+    const backdrop = document.getElementById('confirm-backdrop');
+    const cTitle = document.getElementById('confirm-title');
+    const cMsg = document.getElementById('confirm-message');
+    const cYes = document.getElementById('confirm-yes');
+    const cNo = document.getElementById('confirm-no');
+    let pendingConfirm = null;
+
+    function askConfirm(title, msg, onYes) {
+      cTitle.textContent = title;
+      cMsg.textContent = msg;
+      pendingConfirm = onYes;
+      backdrop.classList.add('show');
+    }
+    cYes.addEventListener('click', async () => {
+      backdrop.classList.remove('show');
+      if (pendingConfirm) { const fn = pendingConfirm; pendingConfirm = null; await fn(); }
+    });
+    cNo.addEventListener('click', () => { backdrop.classList.remove('show'); pendingConfirm = null; });
+    backdrop.addEventListener('click', (e) => {
+      if (e.target === backdrop) { backdrop.classList.remove('show'); pendingConfirm = null; }
+    });
+
+    // ---- 공개 API ----
+    window.CitationLibrary = {
+      save: save,
+      get all() { return items.slice(); }
+    };
+
+    // ---- 초기화 ----
+    (async () => {
+      adapter = await detectStorage();
+      items = await adapter.load();
+      if (!Array.isArray(items)) items = [];
+
+      // 스토리지 상태 표시
+      const statusMap = {
+        artifact: { cls: 'ok',   text: '● Persistent (Claude)' },
+        local:    { cls: 'ok',   text: '● LocalStorage' },
+        memory:   { cls: 'warn', text: '● Memory Only (미지속)' }
+      };
+      const s = statusMap[adapter.type] || { cls: 'err', text: '● Unknown' };
+      statusEl.className = 'lib-storage-status ' + s.cls;
+      statusEl.innerHTML = `<span class="dot"></span>${s.text}`;
+
+      render();
+    })();
+  })();
+</script>
+
+</body>
+</html>
